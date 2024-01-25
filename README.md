@@ -1,0 +1,1 @@
+Python function library and example notebooks for the plotting and analysis of netCDF4 data files obtained from the nasa OceanColor level 3&4 data Browser. For use in the LiDAR project in obtaining historical data of the diffuse attenuation coefficent (Kd490).

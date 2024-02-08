@@ -70,7 +70,7 @@ def KD490_Plot_Data (file, **kwargs):
 
 
 
-    lev_exp = np.arange(np.log10(0.01), np.log10(5), 0.01)
+    lev_exp = np.arange(np.log10(0.01), np.log10(5), 0.005)
     levs = np.power(10, lev_exp)
     cs = ax.contourf(lat1, lon1, Kd_490, levs, norm=LogNorm(), cmap=cmap_adj, extend='neither')
     cs.cmap.set_under('none')
@@ -99,7 +99,16 @@ def KD490_Plot_Data (file, **kwargs):
 def CoordsCalc(Area, Pos=[]):
     # Area in [km^2]
     # Position in [Lon, Lat]
-    CalcCoords = np.array([np.round(Pos[0]-(Area/2)*(1/111),2), np.round(Pos[0]+(Area/2)*(1/111),2),np.round(Pos[1]+(Area/2)*(1/111),2), np.round(Pos[1]-(Area/2)*(1/111),2)])
+    
+    
+    ### Accurate Conversion
+    # longConv = 111.320*np.cos(np.deg2rad(Pos[1]))
+    # latConv =  110.574
+    
+    ### Simple Conversion
+    longConv = 111
+    latConv =  111
+    CalcCoords = np.array([np.round(Pos[0]-(Area/2)*(1/longConv),6), np.round(Pos[0]+(Area/2)*(1/longConv),6),np.round(Pos[1]+(Area/2)*(1/latConv),6), np.round(Pos[1]-(Area/2)*(1/latConv),6)])
     return CalcCoords
 
 
@@ -337,8 +346,6 @@ def Coords_Check_avg(folderpath,coords=[],**kwargs):
     
 # ### Calculate the average values of Kd490 for a given file and coordinates       
 
-
-#### #### ####
 def KD490_Plot_Data_Region(file, coords=[], **kwargs):
     # Read and store .nc file using netCDF4 Package function 'Dataset'
     Kd_data = Dataset(r"{}".format(file), format="NETCDF4")
@@ -352,7 +359,7 @@ def KD490_Plot_Data_Region(file, coords=[], **kwargs):
 
     # Overwrite int16 to NaN values
     Kd_490 = np.where(Kd_490 == -32767, np.nan, Kd_490)
-
+#     Kd_490 = ma.masked_where(Kd_490 == -32767, Kd_490)
     # Slicing Data for specified region
     Left, Right, Upper, Lower = coords
 
@@ -420,13 +427,14 @@ def KD490_Plot_Data_Region(file, coords=[], **kwargs):
 
     ext_h = (np.max(lat_reduced) + pad_lat1) - (np.min(lat_reduced) - pad_lat1)
     ext_w = (np.max(lon_reduced) + pad_lon1) - (np.min(lon_reduced) - pad_lon1)
-    rect = patches.Rectangle((np.min(np.min(lon_reduced) - pad_lon1), np.min(np.min(lat_reduced) - pad_lat1)), ext_h, ext_w, linewidth=0.5, edgecolor='red', facecolor='none')
+    rect = patches.Rectangle((np.min(np.min(lon_reduced) - pad_lon1), np.min(np.min(lat_reduced) - pad_lat1)), ext_w, ext_h, linewidth=0.5, edgecolor='red', facecolor='none')
     axs[0].add_patch(rect)
     rect = patches.Rectangle((np.min(lon_reduced), np.min(lat_reduced)), w, h, linewidth=1, edgecolor='black', facecolor='none')
     axs[1].add_patch(rect)
     rect = patches.Rectangle((np.min(lon_reduced), np.min(lat_reduced)), w, h, linewidth=2.5, edgecolor='black', facecolor='none')
     axs[2].add_patch(rect)
-    ticks_finer = np.logspace(np.log10(0.01),np.log10(5),40,endpoint=True)
+    
+    ticks_finer = np.logspace(np.log10(0.01),np.log10(5),80,endpoint=True)
     cbar = fig.colorbar(cs3, fraction=0.046, pad=0.05, ticks=ticks_finer, format=formatter)
     
     Avg = KD490_Region_Avg(file, coords)[0]
@@ -439,13 +447,136 @@ def KD490_Plot_Data_Region(file, coords=[], **kwargs):
     cs1.changed()
     cs2.changed()
     cs3.changed()
+    
 
     for key, value in kwargs.items():
+        if key =='grid' and value == True:
+            fig1, ax = plt.subplots(layout='constrained')
+            ax.set_aspect('equal')
+            ax.apply_aspect()
+#             MarkerS = (ax.get_position().transformed(fig.transFigure).width*72/fig1.dpi)/(len(Kd_490_reduced[0][:])+1)
+            scat = ax.scatter(lat1_reduced, lon1_reduced,c=Kd_490_reduced,cmap=cmap_adj1,s=200, marker='s')
+            deg_dist = lat1_reduced[0][1] - lat1_reduced[0][0]
+            kmDist = np.round(111*deg_dist,1)
+            cbarscat = fig1.colorbar(scat , fraction=0.046, pad=0.05)
+            ax.set_title('Data Points: {}\nResolution '.format(KD490_Region_Avg(file, coords)[5])+r'$\approx$'+'{} km'.format(kmDist))
+            ax.set_xlabel('Longitude')
+            ax.set_ylabel('Latitude')
+            cbarscat.ax.set_ylabel('$\mathrm{K_d}(490) ~ [\mathrm{m}^{-1}]$')      
+#             fig1.savefig('savedfigs/LatexFigs/GridRegion.png', dpi=600)
+
         if key == 'save':
             print('Figure Saved Successfully')
             fig.savefig('{}'.format(value), dpi=600)
-        else:
-            print('FIGURE NOT SAVED! Check kwarg is correct')
+
+# #### #### ####
+# def KD490_Plot_Data_Region(file, coords=[], **kwargs):
+#     # Read and store .nc file using netCDF4 Package function 'Dataset'
+#     Kd_data = Dataset(r"{}".format(file), format="NETCDF4")
+
+#     # Optional: Print Data Information
+#     # print(Kd_data)
+
+#     # Assuming standard NASA variable naming convention
+#     # Store variables as np.arrays for easy plotting
+#     Kd_490, lat, lon = np.array(Kd_data.variables['Kd_490']), np.array(Kd_data.variables['lat']), np.array(Kd_data.variables['lon'])
+
+#     # Overwrite int16 to NaN values
+#     Kd_490 = np.where(Kd_490 == -32767, np.nan, Kd_490)
+
+#     # Slicing Data for specified region
+#     Left, Right, Upper, Lower = coords
+
+#     lat_uslice = np.min([i for i in range(len(lat)) if lat[i] < Upper])
+#     lat_lslice = np.max([i for i in range(len(lat)) if lat[i] >= Lower])
+#     lon_wslice = np.min([i for i in range(len(lon)) if lon[i] >= Left])
+#     lon_eslice = np.max([i for i in range(len(lon)) if lon[i] < Right])
+
+#     Kd_490_reduced = Kd_490[lat_uslice:lat_lslice, lon_wslice:lon_eslice]
+#     lat_reduced = lat[lat_uslice:lat_lslice]
+#     lon_reduced = lon[lon_wslice:lon_eslice]
+
+#     t0 = Kd_data.time_coverage_start
+#     tf = Kd_data.time_coverage_end
+#     period = Kd_data.temporal_range
+#     DateStart = t0[:-14]
+#     Dateend = tf[:-14]
+#     inst = '{} - {}'.format(Kd_data.instrument, Kd_data.platform)
+
+#     # Plotting
+#     fig, axs = plt.subplots(1, 3, subplot_kw={'projection': ccrs.PlateCarree()}, figsize=(15, 7), layout="constrained")
+
+#     fig.suptitle('{} data\n From {} to {} ({})\n Lon:[{} - {}] Lat:[{} - {}]\n'.format(inst, DateStart, Dateend, period, coords[0], coords[1], coords[2], coords[3]), size=16)
+
+#     axs[0].axis('off')
+#     axs[1].axis('off')
+#     axs[2].axis('off')
+#     axs[0].stock_img()
+#     axs[1].stock_img()
+#     axs[2].stock_img()
+#     pad_lon1 = (np.max(lon_reduced) - np.min(lon_reduced)) * 8
+#     pad_lat1 = (np.max(lat_reduced) - np.min(lat_reduced)) * 8
+#     pad_lon2 = (np.max(lon_reduced) - np.min(lon_reduced)) * 0.2
+#     pad_lat2 = (np.max(lat_reduced) - np.min(lat_reduced)) * 0.2
+#     lat1, lon1 = np.meshgrid(lon, lat)
+
+
+
+
+#     cmap_adj = plt.colormaps.get_cmap("rainbow").copy()
+#     lev_exp = np.arange(np.log10(0.01), np.log10(5), 0.01)
+#     levs = np.power(10, lev_exp)
+#     cs1 = axs[0].contourf(lat1, lon1, Kd_490, levs, norm=LogNorm(), cmap=cmap_adj, extend='neither')
+#     cs1.cmap.set_under('none')
+#     formatter = LogFormatterSciNotation(10, labelOnlyBase=False, minor_thresholds=(5,1000))
+#     cbar1 = fig.colorbar(cs1, fraction=0.046, pad=0.05, ticks=[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5], format=formatter)
+
+#     cmap_adj1 = plt.colormaps.get_cmap("inferno").copy()
+#     lat1_reduced, lon1_reduced = np.meshgrid(lon_reduced, lat_reduced)
+#     cs1 = axs[0].contourf(lat1_reduced, lon1_reduced, Kd_490_reduced, 700, cmap=cmap_adj1, extend='both', norm='log')
+#     axs[0].set_extent([np.min(lon), np.max(lon), np.max(lat), np.min(lat)])
+#     cs1.cmap.set_under('none')
+
+#     cs2 = axs[1].contourf(lat1, lon1, Kd_490, levs, norm=LogNorm(), cmap=cmap_adj)
+#     cs2 = axs[1].contourf(lat1_reduced, lon1_reduced, Kd_490_reduced, 700, cmap=cmap_adj1, extend='both', norm='log')
+#     axs[1].set_extent([np.min(lon_reduced) - pad_lon1, np.max(lon_reduced) + pad_lon1, np.min(lat_reduced) - pad_lat1, np.max(lat_reduced) + pad_lat1])
+    
+
+#     cs3 = axs[2].contourf(lat1, lon1, Kd_490, levs, norm=LogNorm(), cmap=cmap_adj)
+#     cs3 = axs[2].contourf(lat1_reduced, lon1_reduced, Kd_490_reduced, 700, cmap=cmap_adj1, extend='both', norm='log')
+#     axs[2].set_extent([np.min(lon_reduced) - pad_lon2, np.max(lon_reduced) + pad_lon2, np.min(lat_reduced) - pad_lat2, np.max(lat_reduced) + pad_lat2])
+
+#     h = np.max(lat_reduced) - np.min(lat_reduced)
+#     w = np.max(lon_reduced) - np.min(lon_reduced)
+
+#     ext_h = (np.max(lat_reduced) + pad_lat1) - (np.min(lat_reduced) - pad_lat1)
+#     ext_w = (np.max(lon_reduced) + pad_lon1) - (np.min(lon_reduced) - pad_lon1)
+#     rect = patches.Rectangle((np.min(np.min(lon_reduced) - pad_lon1), np.min(np.min(lat_reduced) - pad_lat1)), ext_w, ext_h, linewidth=0.5, edgecolor='red', facecolor='none')
+#     axs[0].add_patch(rect)
+#     rect = patches.Rectangle((np.min(lon_reduced), np.min(lat_reduced)), w, h, linewidth=1, edgecolor='black', facecolor='none')
+#     axs[1].add_patch(rect)
+#     rect = patches.Rectangle((np.min(lon_reduced), np.min(lat_reduced)), w, h, linewidth=2.5, edgecolor='black', facecolor='none')
+#     axs[2].add_patch(rect)
+#     ticks_finer = np.logspace(np.log10(0.01),np.log10(5),200,endpoint=True)
+#     cbar = fig.colorbar(cs3, fraction=0.046, pad=0.05, ticks=ticks_finer, format=formatter)
+    
+#     Avg = KD490_Region_Avg(file, coords)[0]
+#     NaNs = KD490_Region_Avg(file, coords)[1]
+#     NanAvg = (NaNs / KD490_Region_Avg(file, coords)[5]) * 100
+#     axs[2].set_title(r'Avg $\mathrm{K_d}(490)$ = '+'{:.5f}\n Empty data points = {} ({:.1f}%)'.format(Avg, NaNs, NanAvg))
+#     cbar.ax.set_ylabel('$\mathrm{K_d}(490) ~ [\mathrm{m}^{-1}]$')
+#     cbar1.ax.set_ylabel('$\mathrm{K_d}(490) ~ [\mathrm{m}^{-1}]$')
+
+#     cs1.changed()
+#     cs2.changed()
+#     cs3.changed()
+
+#     for key, value in kwargs.items():
+#         if key == 'save':
+#             print('Figure Saved Successfully')
+#             fig.savefig('{}'.format(value), dpi=600)
+#         else:
+#             print('FIGURE NOT SAVED! Check kwarg is correct')
             
 #### #### #### ####
 def KD490_Region_Avg (file, coords =[]):
@@ -1237,19 +1368,23 @@ def MultiPos_MultiROI_DataVar_Plot(SizeList,PosList, folderpath, date_start,date
         CoordsList.insert(i,List)
     fig, ax = plt.subplots(1, figsize=(14,10),layout="constrained")
     for i in range(len(SizeList)):
-        Var = MultiPos_DataVar(CoordsList[i], folderpath)
-        std = np.sqrt(Var)
+#         Var = MultiPos_DataVar(CoordsList[i], folderpath)
+#         std = np.sqrt(Var)
         avg = np.array([])
+        Var = np.array([])
         SubList = CoordsList[i]
         for j in range(len(SubList)):
             many_avg = MultiFile_Reg_avg_adj (folderpath, date_start,date_end, SubList[j])
             calcAVG = np.nanmean(many_avg[0].astype('float64'))
+            calcVar = np.nanvar(many_avg[0].astype('float64'))
             avg = np.append(avg,calcAVG)
+            Var = np.append(Var,calcVar)
+        std = np.sqrt(Var)
         Pos_String = []
         for k in range (len(PosList)):
             Pos_String = np.append(Pos_String,'{}'.format(PosList[k]))
         s = int(np.round(4+(np.emath.logn(2,SizeList[i])),0))
-        ax.errorbar(Pos_String , avg, yerr = std, marker='s', capsize=5, markersize = s, label='{} km ROI'.format(SizeList[i]), linestyle='',elinewidth=3,alpha=0.7)  
+        ax.errorbar(Pos_String , avg, yerr = std, marker='s', capsize=s, markersize = s, label='{} km ROI'.format(SizeList[i]), linestyle='',elinewidth=3,alpha=0.7)  
         # ax.scatter(Pos_String ,avg,label='{}'.format(SizeList[i]))  
     window =  np.datetime64(many_avg[5][-1]) - np.datetime64(many_avg[5][0])
     fig.suptitle('Comparison of position and ROI size (Including standard deviation)\n{} to {} ({})\nSatellite data captured period ({}) [Files: {}]\n{}\n'.format(many_avg[5][0], many_avg[5][-1],window,many_avg[4][0],many_avg[8][0],many_avg[7][0] ),fontsize=22)
@@ -1322,3 +1457,150 @@ def MultiFile_Reg_avg_adj (folderpath,date_start,date_end, coords=[]):
     for l in range(len(x)):
         numfiles= np.append(numfiles,np.round((len(files)),0))
     return np.array([x,y,t0,tf,period,Date,DataNum,inst,numfiles])
+
+        
+def MultiPos_MonthlyVar_Plot(Size,PosList, folderpath, date_start,date_end,**kwargs):
+
+    CoordsList = CoordsCalcList(Size, PosList)
+    fig, ax = plt.subplots(1, figsize=(16,10),layout="constrained")
+    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b - %Y"))
+    RealEnd = np.array(date_end, dtype='datetime64[M]')
+    Months = np.arange(date_start, RealEnd+1 ,1, dtype='datetime64[M]')
+    for i in range(len(CoordsList)):
+        avg = np.array([])
+        Var = np.array([])
+        Num = np.array([])
+        Date = np.array([])
+        for j in range(len(Months)):
+            many_avg = MultiFile_Reg_avg_monthly(folderpath, Months[j],Months[j], CoordsList[i])
+            calcAVG = np.nanmean(many_avg[0].astype('float64'))
+            calcVar = np.nanvar(many_avg[0].astype('float64'))
+            avg = np.append(avg,calcAVG)
+            Var = np.append(Var,calcVar)
+            Num = np.append(Num,many_avg[8][0].astype('float64'))
+            Date = np.append(Date,many_avg[5][0])
+        std = np.sqrt(Var)
+        NumT = np.sum(Num)
+        Mon = np.array(Date,dtype='datetime64[M]')
+        ax.errorbar(Mon , avg, yerr = std, marker='s', capsize=20, markersize = 10, label='{}'.format(PosList[i]), linestyle='-',elinewidth=3,alpha=0.6, markeredgewidth=2)  
+    end = np.array(Months[-1]+1,dtype='datetime64[D]')
+    start = np.array(Months[0],dtype='datetime64[D]')
+    window =  end-start
+    fig.suptitle('Monthly Average (Including standard deviation) at Multiple Position\n{} to {} ({})\nSatellite data captured period ({}) [Files: {}]\n{}\n'.format(Months[0],  Months[-1],window,many_avg[4][0],NumT,many_avg[7][0] ),fontsize=22)
+    ax.yaxis.set_tick_params(labelsize=16)
+    ax.xaxis.set_tick_params(labelsize=24, rotation=90)
+
+    ax.set_ylabel(r'Kd(490)[m$^{-1}$]',fontsize=20)
+    handles, labels = ax.get_legend_handles_labels()
+
+    new_handles = []
+
+    for h in handles:
+        if isinstance(h, container.ErrorbarContainer):
+            new_handles.append(h[0])
+        else:
+            new_handles.append(h)
+
+    ax.legend(new_handles, labels, loc='center left', bbox_to_anchor=(1, 0.5),
+          fancybox=False,frameon=True, ncol=1,fontsize=18, labelspacing=2, title='ROI Size:\n{}X{} km'.format(Size,Size), title_fontsize=18)
+    for key, value in kwargs.items():
+        if key == 'Map'  and value == True :
+            Coords_Check_funcAdju( CoordsList)
+        if key == 'save' :
+            print('Figure Saved Successfully')
+            fig.savefig('{}'.format(value))
+
+            
+            
+def MultiFile_Reg_avg_monthly (folderpath,date_start,date_end, coords=[]):
+
+    mypath = folderpath
+    Folder1_StartDates = np.datetime64()
+    Folder1_EndDates = np.datetime64()
+    for i in range(len(MultiFile_FileNames(folderpath))):
+        mypath = folderpath
+        files = [f for f in listdir(mypath) if isfile(join(mypath, f)) and f.endswith(".nc")]
+        f = files[i]
+        loc = '{}\{}'.format(mypath, f)
+        Kd_data = Dataset(r"{}".format(loc), format="NETCDF4")
+        Folder1_StartDates = np.append(Folder1_StartDates,np.datetime64(Kd_data.time_coverage_start[:10]).astype('datetime64[M]'))
+        Folder1_EndDates = np.append(Folder1_EndDates,np.datetime64(Kd_data.time_coverage_end[:10]).astype('datetime64[M]'))
+            
+    index = np.where(np.logical_and(np.datetime64(date_start,'M')<=Folder1_StartDates[:], np.datetime64(date_end, 'M')>=Folder1_EndDates[:]))
+    a = index[0][0] -1 
+    b = index[0][-1]
+    
+    files = [f for f in listdir(mypath) if isfile(join(mypath, f)) and f.endswith(".nc")]
+    files = files[a:b]
+    x = np.array([])
+    y = np.array([])
+    t0 = np.array([])
+    tf = np.array([])
+    period = np.array([])
+    Date = np.array([])
+    DataNum = np.array([])
+    inst = np.array([])
+    for i in range(len(files)):
+        f = files[i]
+        loc = '{}\{}'.format(mypath, f)
+        x = np.append(x,KD490_Region_Avg(r"{}".format(loc),coords)[0]) ## Avg Value
+        y = np.append(y,KD490_Region_Avg(r"{}".format(loc),coords)[1]) ## No. of NaN
+        t0 = np.append(t0,KD490_Region_Avg(r"{}".format(loc),coords)[2]) ## Time Begun
+        tf = np.append(tf,KD490_Region_Avg(r"{}".format(loc),coords)[3]) ## Time Ended
+        period = np.append(period,KD490_Region_Avg(r"{}".format(loc),coords)[4]) ## Data Capture length
+        Date = np.append(Date,KD490_Region_Avg(r"{}".format(loc),coords)[2][:-14]) ## Date of capture start
+        DataNum = np.append(DataNum,KD490_Region_Avg(r"{}".format(loc),coords)[5]) ## Number of Data Points in region
+        inst = np.append(inst,KD490_Region_Avg(r"{}".format(loc),coords)[6]) ## instrument
+    numfiles = np.array([])
+    for l in range(len(x)):
+        numfiles= np.append(numfiles,np.round((len(files)),0))
+    return np.array([x,y,t0,tf,period,Date,DataNum,inst,numfiles])
+
+
+
+def Coords_Check_funcAdju(coords=[]):
+    
+    ### Plotting ###
+    fig,axs= plt.subplots(1,2,subplot_kw={'projection': ccrs.PlateCarree()}, figsize=(15,7),layout="constrained")
+    fig.suptitle('Plotting Given Coordinates',fontsize=25)
+    axs[0].axis('off')
+    axs[1].axis('off')
+    axs[0].stock_img()
+    axs[1].stock_img()
+    
+    lat_mins = []
+    lat_maxs = []
+    lon_mins = []
+    lon_maxs = []
+
+    for i in range(len(coords)):
+        lat_mins = np.append(lat_mins,coords[i][2])
+        lat_maxs = np.append(lat_maxs,coords[i][3])
+        lon_mins = np.append(lon_mins,coords[i][0])
+        lon_maxs = np.append(lon_maxs,coords[i][1])
+        
+    pad_lon_left = np.min(lon_mins)
+    pad_lon_right = np.max(lon_maxs)
+    pad_lat_upper = np.max(lat_maxs)
+    pad_lat_lower = np.min(lat_mins)
+    
+    axs[0].set_extent([110,165,-5,-45])
+    
+    axs[1].set_extent([pad_lon_left*0.95,pad_lon_right*1.05,pad_lat_upper*0.9,pad_lat_lower*1.1])
+    
+    for i in range(len(coords)):
+        h = np.round(coords[i][3] - coords[i][2],4)
+        w = np.round(coords[i][1] - coords[i][0],4)
+        c_lat = (coords[i][1] + coords[i][0])/2
+        c_lon = (coords[i][3] + coords[i][2])/2
+
+        axs[0].scatter(c_lat,c_lon,s=80,marker='x',color='r')
+        axs[1].annotate('[{}, {}]'.format(c_lat,c_lon),(c_lat+2,c_lon-0.3),fontsize=10)
+        
+        rect = patches.Rectangle((coords[i][0],coords[i][2]), w, h, linewidth=2, edgecolor='black', facecolor='none')
+        axs[1].add_patch(rect)    
+        axs[1].scatter(c_lat,c_lon,s=20,marker='x',color='r')
+
+
+    

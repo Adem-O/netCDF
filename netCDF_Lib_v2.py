@@ -703,9 +703,8 @@ def MutiFile_Data_plotting (folderpath, coords=[],**kwargs):
     axs[0].set_xticklabels(axs[0].get_xticklabels(), rotation=45, ha='right')
     axs[0].set_ylabel('$\mathrm{K}_\mathrm{d}(490) [\mathrm{m}^{1}]$')
     
-    
-    axs[1].set_title('\n Percentage of empty data points captured')
-    axs[1].bar(many_avg[5],Nans)
+    axs[1].set_title('\n Percentage of viable data in region of interest')
+    axs[1].bar(many_avg[5],100 - Nans)
     axs[1].set_xticks(many_avg[5][::spacing])
     axs[1].set_xticklabels(axs[1].get_xticklabels(), rotation=45, ha='right')
     for key, value in kwargs.items():
@@ -1002,8 +1001,8 @@ def Compare_dataBinning_plot (EarliestDate,LatestDate, folderpaths=[], coords=[]
     axs[0].scatter(Dates_major+Cent,avg_2, label = ('{} data\n {} \n {}\n ({})'.format(many_avg_2[7][0],many_avg_2[5][0],
                                                                                 many_avg_2[5][-1],many_avg_2[4][0])),color='tab:orange',marker='s')
     axs[0].plot(Dates_major+Cent,avg_2 ,color='grey', zorder=0)
-    for i in range(len(Dates_major)+1):
-        axs[0].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#     for i in range(len(Dates_major)+1):
+#         axs[0].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
 #     axs[0].set_xlim(Dates_minor[0], Dates_minor[-1])  
     axs[0].xaxis.set_major_locator(mdates.MonthLocator())
     axs[0].xaxis.set_minor_locator(mdates.DayLocator())
@@ -1013,7 +1012,7 @@ def Compare_dataBinning_plot (EarliestDate,LatestDate, folderpaths=[], coords=[]
     axs[0].tick_params('x', length=4, width=1, which='both')
     axs[0].tick_params(axis='x', which="minor", rotation=90, labelsize=8)
 
-    axs[0].set_ylabel('$\mathrm{K}_\mathrm{d}(490) [\mathrm{m}^{1}]$')
+    axs[0].set_ylabel('$\mathrm{K}_\mathrm{d}(490) [\mathrm{m}^{-1}]$')
     axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5),
       fancybox=False,frameon=True, ncol=1,fontsize=10)
     axs[0].text(0.7,1.2,'Total Var ({}) = {} '.format(many_avg_1[4][0],np.round(np.nanvar(avg_1)*10**3,5))+r'$\cdot~10^{-3}~[\mathrm{m}^{-1}]$'+'\nTotal Var ({}) = {} '.format(many_avg_2[4][0],np.round(np.nanvar(avg_2)*10**3,5))+r'$\cdot~10^{-3}~[\mathrm{m}^{-1}]$', ha='left', va='top', transform=axs[0].transAxes,fontsize=12, backgroundcolor='lightgrey')
@@ -1030,15 +1029,15 @@ def Compare_dataBinning_plot (EarliestDate,LatestDate, folderpaths=[], coords=[]
     axs[1].xaxis.set_minor_formatter(mdates.DateFormatter("%d"))
 #     axs[1].set_xlim(Dates_minor[0], Dates_minor[-1])
 
-    for i in range(len(Dates_major)+1):
-        axs[0].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
-        axs[1].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#     for i in range(len(Dates_major)+1):
+#         axs[0].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#         axs[1].axvline(Dates_major[0] + i*Cent*2, linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
         
-    for i in range(len(Dates_major)):
-        axs[0].axvline(Dates_major[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
-        axs[0].axvline(Dates_major_end[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
-        axs[1].axvline(Dates_major[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
-        axs[1].axvline(Dates_major_end[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#     for i in range(len(Dates_major)):
+#         axs[0].axvline(Dates_major[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#         axs[0].axvline(Dates_major_end[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#         axs[1].axvline(Dates_major[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
+#         axs[1].axvline(Dates_major_end[i], linestyle=(0,(4,4)), linewidth=1, alpha=0.3, color='grey')
     
     for i in range(len(Dates_major)-2):
         k = i+1
@@ -1065,7 +1064,9 @@ def Compare_dataBinning_plot (EarliestDate,LatestDate, folderpaths=[], coords=[]
     
     axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5),
       fancybox=False,frameon=True, ncol=1,fontsize=10)
-    
+    if len(Dates_minor) > 100 :
+        axs[0].minorticks_off()
+        axs[1].minorticks_off()
 #     axs[0].set_xlim(Dates_major[0]-Cent,Dates_major[-1]+Cent)
 #     axs[1].set_xlim(Dates_major[0]-Cent,Dates_major[-1]+Cent)
     

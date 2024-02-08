@@ -4,10 +4,12 @@ pip install cartopy
  
 pip install -U matplotlib
 
-conda install -c conda-forge jupyter_contrib_nbextensions
-
 pip install imageio
 
 pip install ffmpeg
 
 pip install imageio[ffmpeg]
+
+conda install -c conda-forge matplotlib
+
+conda upgrade -c conda-forge matplotlib
